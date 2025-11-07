@@ -1,0 +1,190 @@
+/* Fonte futurista */
+body {
+  font-family: 'Orbitron', sans-serif;
+  background-image: url('./img/5439188.jpg');
+  background-size: cover;
+  color: #fff;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Camada de estrelas */
+body::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 200%; height: 200%;
+  background: url('https://www.transparenttextures.com/patterns/stardust.png') repeat;
+  animation: stars 80s linear infinite;
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 0;
+}
+@keyframes stars {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-200px); }
+}
+
+/* Estrutura principal */
+#app { display: flex; flex-direction: column; align-items: center; z-index:1; }
+
+#eva-container { text-align: center; margin-bottom: 10px; }
+#eva {
+  width: 180px;
+  animation: flutuar 3s ease-in-out infinite;
+}
+@keyframes flutuar {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+  100% { transform: translateY(0); }
+}
+
+/* Caixa de chat com glassmorphism */
+#chat-container {
+  width: 90vw;
+  max-width: 650px;
+  height: 70vh;
+  background: rgba(255,255,255,0.08);
+  border: 2px solid #00ffff;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0 25px #00ffff66;
+}
+
+#messages {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #00ffff #111;
+}
+
+/* Balões */
+.message {
+  max-width: 75%;
+  margin-bottom: 14px;
+  padding: 10px 16px;
+  border-radius: 18px;
+  font-size: 16px;
+}
+.user-message {
+  background: #00ffffcc;
+  color: #000;
+  margin-left: auto;
+  border-bottom-right-radius: 5px;
+  box-shadow: 0 0 10px #00ffff;
+}
+.bot-message {
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  margin-right: auto;
+  border-bottom-left-radius: 5px;
+  box-shadow: 0 0 10px #00ffff33;
+}
+
+/* Área de input e botões */
+#input-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid #00ffff66;
+  background: rgba(0,0,0,0.4);
+  flex-wrap: nowrap; /* padrão desktop */
+}
+
+#user-input {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  outline: none;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  border-radius: 20px;
+  font-size: 16px;
+}
+
+#send-btn, #mic-btn {
+  background: #00ffffaa;
+  color: #000;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: 0.3s;
+  box-shadow: 0 0 10px #00ffff;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+#send-btn:hover, #mic-btn:hover { background: #00ffff; }
+
+.mic {
+  height: 20px;
+  width: 20px;
+}
+
+/* Botões de fonte */
+#font-buttons {
+  display: flex;
+  gap: 5px;
+}
+#font-buttons button {
+  background: #00ffffaa;
+  color: #000;
+  font-size: 16px;
+  border: none;
+  border-radius: 10px;
+  padding: 4px 8px;
+  cursor: pointer;
+  box-shadow: 0 0 6px #00ffff;
+}
+#font-buttons button:hover {
+  background: #00ffff;
+}
+
+/* Responsivo para celular */
+@media (max-width: 600px) {
+  #input-container {
+    flex-wrap: wrap; /* permite quebrar linha */
+    gap: 10px;
+  }
+
+  #user-input {
+    flex: 1 1 100%;
+    font-size: 14px;
+  }
+
+  #send-btn, #mic-btn {
+    flex: 1 1 45%;
+    padding: 10px;
+    font-size: 14px;
+    display: inline-block; /* garante visibilidade */
+  }
+
+  #font-buttons {
+    width: 100%;
+    justify-content: center;
+    margin-top: 5px;
+  }
+}
+
+/* Desktop mantém o layout atual */
+@media (min-width: 601px) {
+  #input-container {
+    flex-wrap: nowrap;
+  }
+
+  #font-buttons {
+    display: flex;
+    gap: 5px;
+    margin-left: 8px;
+  }
+}

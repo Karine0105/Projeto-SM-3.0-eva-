@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EVA Chatbot</title>
+<link rel="stylesheet" href="estilo.css" />
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  .thinking {
+    font-style: italic;
+    opacity: 0.7;
+  }
+</style>
+</head>
+<body>
+  <div id="app">
+    <div id="eva-container">
+      <img src="./img/eva.png" alt="EVA" id="eva" />
+    </div>
+
+    <div id="chat-container">
+      <div id="messages"></div>
+
+      <div id="input-container">
+        <input type="text" id="user-input" placeholder="Fale com a EVA..." />
+        <button id="send-btn">Enviar</button>
+        <button id="mic-btn">
+          <img class="mic" src="./img/mic.png" alt="mic" />
+        </button>
+        <div id="font-buttons">
+          <button id="increase-font-btn" title="Aumentar Fonte">A+</button>
+          <button id="decrease-font-btn" title="Diminuir Fonte">A-</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+
+const API_KEY = "AIzaSyD3ECZpJZloVdH3gdIT0FpBRW8Z89ye9C8";
+const genAI = new GoogleGenerativeAI(API_KEY);
+
+const systemInstruction =
+  "Você é EVA, uma assistente de chat. Sua missão é responder a todas as perguntas de forma extremamente concisa, direta e resumida, com no máximo 2 ou 3 frases. Nunca se alongue na resposta.";
+
+const model = genAI.getGenerativeModel({
+  model: "gemini-1.5-flash",
+  systemInstruction,
+  generationConfig: { maxOutputTokens: 100 },
+});
+let historico = { history: [] };
+
+const input = document.getElementById("user-input");
+const sendBtn = document.getElementById("send-btn");
+const micBtn = document.getElementById("mic-btn");
+const messagesDiv = document.getElementById("messages");
+
+const increaseFontBtn = document.getElementById("increase-font-btn");
+const decreaseFontBtn = document.getElementById("decrease-font-btn");
+let currentFontSize = 16;
+const MIN_FONT_SIZE = 12;
+const MAX_FONT_SIZE = 24;
+const FONT_STEP = 2;
+
+function setFontSize(size) {
+  messagesDiv.querySelectorAll(".message").forEach((msg) => {
+    msg.style.fontSize = `${size}px`;
+  });
+  currentFontSize = size;
+}
+
+increaseFontBtn.addEventListener("click", () => {
+  if (currentFontSize < MAX_FONT_SIZE) setFontSize(currentFontSize + FONT_STEP);
+});
+decreaseFontBtn.addEventListener("click", () => {
+  if (currentFontSize > MIN_FONT_SIZE) setFontSize(currentFontSize - FONT_STEP);
+});
+
+sendBtn.addEventListener("click", () => enviarMensagem());
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") enviarMensagem();
+});
+micBtn.addEventListener("click", iniciarReconhecimentoVoz);
+input.addEventListener("input", pararFalaAtual);
+
+// --- Seleciona voz Thalita fixa ---
+let vozSelecionada = null;
+
+function carregarVozThalita() {
+  const voices = speechSynthesis.getVoices();
+  const vozesPt = voices.filter(v => v.lang.startsWith("pt"));
+  // Procura pela voz Thalita
+  const thalita = vozesPt.find(v => v.name.toLowerCase().includes("thalita"));
+  vozSelecionada = thalita || (vozesPt.length > 0 ? vozesPt[0] : null);
+}
+
+speechSynthesis.onvoiceschanged = carregarVozThalita;
+carregarVozThalita();
+
+// --- Fala ---
+let falaAtual = null;
+function falar(texto) {
+  if (!window.speechSynthesis) return;
+  pararFalaAtual();
+  const utter = new SpeechSynthesisUtterance(texto);
+  utter.lang = "pt-BR";
+  utter.rate = 1.2;
+  utter.pitch = 1.1;
+  if (vozSelecionada) utter.voice = vozSelecionada;
+  falaAtual = utter;
+  speechSynthesis.speak(utter);
+}
+
+function pararFalaAtual() {
+  if (speechSynthesis.speaking) {
+    speechSynthesis.cancel();
+    falaAtual = null;
+  }
+}
+
+// --- Funções chat ---
+function adicionarMensagem(tipo, texto) {
+  const div = document.createElement("div");
+  div.className = `message ${tipo === "user" ? "user-message" : "bot-message"}`;
+  div.textContent = texto;
+  div.style.fontSize = `${currentFontSize}px`;
+  messagesDiv.appendChild(div);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function formatarResposta(texto) {
+  let textoLimpo = texto.replace(/[*#_`]/g, "");
+  textoLimpo = textoLimpo.replace(/\s+/g, " ").trim();
+  return textoLimpo;
+}
+
+async function enviarMensagem(texto = null) {
+  const msgUser = texto || input.value.trim();
+  if (!msgUser) return;
+  input.value = "";
+  pararFalaAtual();
+  adicionarMensagem("user", msgUser);
+
+  const pensandoDiv = document.createElement("div");
+  pensandoDiv.className = "message bot-message thinking";
+  pensandoDiv.textContent = "EVA está pensando...";
+  pensandoDiv.style.fontSize = `${currentFontSize}px`;
+  messagesDiv.appendChild(pensandoDiv);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    if (verificarSaudacao(msgUser)) {
+      const resposta = "Olá, eu sou a EVA. Em que posso ajudar?";
+      messagesDiv.removeChild(pensandoDiv);
+      adicionarMensagem("bot", resposta);
+      falar(resposta);
+      return;
+    }
+
+    const chat = model.startChat(historico);
+    const result = await chat.sendMessage(msgUser);
+    const msgBotOriginal = result.response.text();
+    const msgBot = formatarResposta(msgBotOriginal);
+
+    messagesDiv.removeChild(pensandoDiv);
+    adicionarMensagem("bot", msgBot);
+    falar(msgBot);
+
+    historico.history.push({ role: "user", parts: [{ text: msgUser }] });
+    historico.history.push({ role: "model", parts: [{ text: msgBotOriginal }] });
+  } catch (error) {
+    console.error("Erro ao contatar a API do Gemini:", error);
+    messagesDiv.removeChild(pensandoDiv);
+    const errorMsg = "Desculpe, não consegui processar sua solicitação no momento.";
+    adicionarMensagem("bot", errorMsg);
+    falar(errorMsg);
+  }
+}
+
+function verificarSaudacao(texto) {
+  const t = texto.toLowerCase();
+  const lista = ["oi", "olá", "ola", "bom dia", "boa tarde", "boa noite", "tudo bem"];
+  return lista.some((s) => t.includes(s));
+}
+
+function iniciarReconhecimentoVoz() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert("Seu navegador não suporta reconhecimento de voz.");
+    return;
+  }
+  const recognition = new SpeechRecognition();
+  recognition.lang = "pt-BR";
+  recognition.start();
+
+  micBtn.innerHTML = '<img class="mic" src="./img/mic.png" alt="Microfone"> ...';
+  micBtn.disabled = true;
+
+  recognition.onresult = (e) => {
+    const textoFalado = e.results[0][0].transcript;
+    enviarMensagem(textoFalado);
+  };
+
+  recognition.onerror = (e) => {
+    console.error("Erro no reconhecimento de voz:", e.error);
+  };
+
+  recognition.onend = () => {
+    micBtn.innerHTML = '<img class="mic" src="./img/mic.png" alt="Microfone">';
+    micBtn.disabled = false;
+  };
+}
+</script>
+</body>
+</html>
